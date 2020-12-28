@@ -17,9 +17,10 @@ const mediaConstraints = {
 let localStream
 let remoteStream
 let isRoomCreator
-let rtcPeerConnection // Connection between the local device and the remote peer.
+let rtcPeerConnections = {};// Connection between the local device and the remote peer.
 let roomId
 let locations
+let bruh = false;
 
 // Free public STUN servers provided by Google.
 const iceServers = {
@@ -75,46 +76,66 @@ socket.on('full_room', () => {
   alert('The room is full, please try another one')
 })
 
-socket.on('start_call', async () => {
-  console.log('Socket event callback: start_call')
+socket.on('start_call', async event => {
+  console.log('Socket event callback: start_call');
+  console.log(event.userId);
 
-  if (isRoomCreator) {
-    rtcPeerConnection = new RTCPeerConnection(iceServers)
-    addLocalTracks(rtcPeerConnection)
-    rtcPeerConnection.ontrack = setRemoteStream
-    rtcPeerConnection.onicecandidate = sendIceCandidate
-    await createOffer(rtcPeerConnection)
-  }
+  if (socket.id !== event.userId) {
+    var rtcPeerConnection = new RTCPeerConnection(iceServers);
+    addLocalTracks(rtcPeerConnection);
+    if (bruh) {
+      rtcPeerConnection.ontrack = e => setRemoteStream(e, 1, event.userId);
+    } else {
+      rtcPeerConnection.ontrack = e => setRemoteStream(e, 0, event.userId);
+      bruh = true;
+    }
+    rtcPeerConnection.onicecandidate = e => sendIceCandidate(e, event.userId);
+    rtcPeerConnections[event.userId] = rtcPeerConnection;
+    await createOffer(rtcPeerConnection, event.userId);
+  };
 })
 
 socket.on('webrtc_offer', async (event) => {
   console.log('Socket event callback: webrtc_offer')
+  //console.log(socket.id);
+  //console.log(event.userId);
 
-  if (!isRoomCreator) {
-    rtcPeerConnection = new RTCPeerConnection(iceServers)
+  if (socket.id === event.userId) {
+    var rtcPeerConnection = new RTCPeerConnection(iceServers)
     addLocalTracks(rtcPeerConnection)
-    rtcPeerConnection.ontrack = setRemoteStream
-    rtcPeerConnection.onicecandidate = sendIceCandidate
-    rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event))
-    await createAnswer(rtcPeerConnection)
+    if (bruh) {
+      rtcPeerConnection.ontrack = e => setRemoteStream(e, 1, event.senderId);
+    } else {
+      rtcPeerConnection.ontrack = e => setRemoteStream(e, 0, event.senderId);
+      bruh = true;
+    }
+    rtcPeerConnection.onicecandidate = e => sendIceCandidate(e, event.senderId)
+    rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event.sdp))
+    rtcPeerConnections[event.senderId] = rtcPeerConnection;
+    console.log(rtcPeerConnections);
+    await createAnswer(rtcPeerConnection, event.senderId)
   }
 })
 
 socket.on('webrtc_answer', (event) => {
   console.log('Socket event callback: webrtc_answer')
 
-  rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event))
+  if (socket.id === event.userId)
+    rtcPeerConnections[event.senderId].setRemoteDescription(new RTCSessionDescription(event.sdp))
 })
 
 socket.on('webrtc_ice_candidate', (event) => {
   console.log('Socket event callback: webrtc_ice_candidate')
-
-  // ICE candidate configuration.
-  var candidate = new RTCIceCandidate({
-    sdpMLineIndex: event.label,
-    candidate: event.candidate,
-  })
-  rtcPeerConnection.addIceCandidate(candidate)
+  //console.log(event.userId)
+  //console.log(rtcPeerConnections);
+  if (socket.id === event.userId) {
+    // ICE candidate configuration.
+    var candidate = new RTCIceCandidate({
+      sdpMLineIndex: event.label,
+      candidate: event.candidate,
+    })
+    rtcPeerConnections[event.senderId].addIceCandidate(candidate)
+  } 
 })
 
 // FUNCTIONS ==================================================================
@@ -153,7 +174,7 @@ function addLocalTracks(rtcPeerConnection) {
   })
 }
 
-async function createOffer(rtcPeerConnection) {
+async function createOffer(rtcPeerConnection, userId) {
   let sessionDescription
   try {
     sessionDescription = await rtcPeerConnection.createOffer()
@@ -166,10 +187,11 @@ async function createOffer(rtcPeerConnection) {
     type: 'webrtc_offer',
     sdp: sessionDescription,
     roomId,
+    userId
   })
 }
 
-async function createAnswer(rtcPeerConnection) {
+async function createAnswer(rtcPeerConnection, userId) {
   let sessionDescription
   try {
     sessionDescription = await rtcPeerConnection.createAnswer()
@@ -182,25 +204,22 @@ async function createAnswer(rtcPeerConnection) {
     type: 'webrtc_answer',
     sdp: sessionDescription,
     roomId,
+    userId
   })
 }
 
-function setRemoteStream(event) {
-  console.log('event', event);
-  event.streams.forEach((stream, index) => {
-    if (index < remoteVideoComponents.length) {
-      remoteVideoComponents[index].srcObject = stream;
-    }
-  })
+function setRemoteStream(event, idx, userId) {
+  remoteVideoComponents[idx].srcObject = event.streams[0];
   remoteStream = event.stream
 }
 
-function sendIceCandidate(event) {
+function sendIceCandidate(event, userId) {
   if (event.candidate) {
     socket.emit('webrtc_ice_candidate', {
       roomId,
       label: event.candidate.sdpMLineIndex,
       candidate: event.candidate.candidate,
+      userId
     })
   }
 }
