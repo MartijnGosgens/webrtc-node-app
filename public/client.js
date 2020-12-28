@@ -53,6 +53,25 @@ function distance(l1, l2) {
   ) ** 0.5
 }
 
+// Returns the audio volume for a given distance. Between distance 50 and 350, the volume decreases linearly.
+function volume(dist) {
+  if (dist<50) {
+    return 1;
+  } else if (dist<350) {
+    return 1-(dist-50) / 300.0;
+  } else {
+    return 0;
+  }
+}
+
+function updateVolumes() {
+  for (let vid of remoteVideoComponents) {
+    if (vid.userId) {
+      vid.volume = volume(people[vid.userId].distance);
+    }
+  }
+}
+
 // SOCKET EVENT CALLBACKS =====================================================
 socket.on('locations', async (roomLocations) => {
   console.log('Socket event callback: locations')
@@ -70,9 +89,13 @@ socket.on('locations', async (roomLocations) => {
         distance: distance(location, roomLocations[socket.id])
       }
     }
+    if (userId != socket.id) {
+      remoteVideoComponents[0].userId = userId;
+    }
   }
   console.log(socket.id, people);
   canvas.renderAll();
+  updateVolumes();
 })
 
 function updateAvatarPosition(avatar, location) {
@@ -276,6 +299,7 @@ canvas.on('object:moving', function (event) {
     roomId,
     location: people[socket.id].location
   })
+  updateVolumes();
 });
 
 function moveSelected(direction) {
