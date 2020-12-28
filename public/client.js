@@ -86,6 +86,9 @@ function initializeAvatar(location, own) {
     'evented': own
   });
   canvas.add(avatar);
+  if (own) {
+    canvas.setActiveObject(avatar);
+  }
   return avatar;
 }
 
@@ -244,10 +247,15 @@ window.onbeforeunload = function ()
   socket.emit('leave', roomId)
 }
 
+canvas.on('object:moving', function (event) {
+  people[socket.id][location] = [event.target.left, event.target.top]
+  socket.emit('update_location', {
+    roomId,
+    location: people[socket.id][location]
+  })
+});
+
 fabric.util.addListener(document.body, 'keydown', function(options) {
-  if (options.repeat) {
-    return;
-  }
   var key = options.which || options.keyCode; // key detection
   if (key === 37) { // handle Left key
     moveSelected(Direction.LEFT);
@@ -260,18 +268,9 @@ fabric.util.addListener(document.body, 'keydown', function(options) {
   }
 });
 
-canvas.on('object:moving', function (event) {
-  people[socket.id][location] = [event.target.left, event.target.top]
-  socket.emit('update_location', {
-    roomId,
-    location: people[socket.id][location]
-  })
-});
 
 function moveSelected(direction) {
   var activeObject = canvas.getActiveObject();
-  var activeGroup = canvas.getActiveGroup();
-
   if (activeObject) {
     switch (direction) {
       case Direction.LEFT:
@@ -288,33 +287,11 @@ function moveSelected(direction) {
         break;
     }
     activeObject.setCoords();
-    console.log([activeObject.left, activeObject.top]);
     people[socket.id][location] = [activeObject.left, activeObject.top]
     canvas.renderAll();
     socket.emit('update_location', {
       roomId,
       location: people[socket.id][location]
     })
-
-  } else if (activeGroup) {
-    switch (direction) {
-      case Direction.LEFT:
-        activeGroup.setLeft(activeGroup.getLeft() - STEP);
-        break;
-      case Direction.UP:
-        activeGroup.setTop(activeGroup.getTop() - STEP);
-        break;
-      case Direction.RIGHT:
-        activeGroup.setLeft(activeGroup.getLeft() + STEP);
-        break;
-      case Direction.DOWN:
-        activeGroup.setTop(activeGroup.getTop() + STEP);
-        break;
-    }
-    activeGroup.setCoords();
-    canvas.renderAll();
-    console.log('selected group was moved');
-  } else {
-    console.log('no object selected');
   }
 }
