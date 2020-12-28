@@ -57,7 +57,7 @@ function volume(dist) {
   if (dist<50) {
     return 1;
   } else if (dist<350) {
-    return 1-(dist-50) / 300.0;
+    return (1-(dist-50) / 300.0)**2;
   } else {
     return 0;
   }
