@@ -52,6 +52,7 @@ io.on('connection', (socket) => {
   socket.on('update_location', (event) => {
     console.log(`Updating location of user ${socket.id} in room ${event.roomId} to position ${event.location}`)
     locations[event.roomId][socket.id] = event.location;
+    // TODO: only send the updated location
     socket.broadcast.to(event.roomId).emit('locations', locations[event.roomId])
   });
 
