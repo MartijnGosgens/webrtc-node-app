@@ -20,9 +20,8 @@
 
       .video-position {
         position: absolute;
-        top: 35%;
-        left: 50%;
-        transform: translate(-50%, -50%);
+        top: 100%;
+        left: 100%;
       }
 
       #video-chat-container {
@@ -48,7 +47,21 @@
         left: 0;
         width: 100%;
         height: 25%;
-        background-color: blue;
+        background-color: #464646;
+      }
+
+      #room-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 75%;
+        background-color: #cbcbcb;
+      }
+
+      #canvas {
+        width: 100%;
+        height: 100%;
       }
 
       .container {
@@ -70,16 +83,20 @@
 
 
     <div id="video-chat-container" class="video-position" style="display: none">
+      <div id="room-panel">
+        <canvas id="canvas" style="width: 100%; height: 100%"></canvas>
+      </div>
       <div id="video-panel" class="container">
         <div><video id="video-1" class="video-container" autoplay="autoplay" muted="muted"></video></div>
         <div><video id="video-2" class="video-container" autoplay="autoplay" muted="muted"></video></div>
         <div><video id="video-3" class="video-container" autoplay="autoplay" muted="muted"></video></div>
       </div>
 
-      <video id="remote-video" autoplay="autoplay"></video>
+<!--      <video id="remote-video" autoplay="autoplay"></video>-->
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script type="text/javascript" src="borrelio/client.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.7.1/fabric.min.js"></script>
   </body>
 </html>

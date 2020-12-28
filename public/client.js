@@ -19,7 +19,7 @@ let remoteStream
 let isRoomCreator
 let rtcPeerConnection // Connection between the local device and the remote peer.
 let roomId
-let locations
+let people = {}
 
 // Free public STUN servers provided by Google.
 const iceServers = {
@@ -32,28 +32,62 @@ const iceServers = {
   ],
 }
 
+const STEP = 10;
+const Direction = {
+  LEFT: 0,
+  UP: 1,
+  RIGHT: 2,
+  DOWN: 3
+};
+
+const canvas = new fabric.Canvas('canvas', {
+  width: 10000,
+  height: 10000,
+});
+
 // BUTTON LISTENER ============================================================
 connectButton.addEventListener('click', () => {
   joinRoom(roomInput.value);
-
-  setTimeout(() => {
-    console.log('Updating my location.')
-    locations[socket.id] = [1, 1];
-    socket.emit('update_location', {
-      roomId,
-      location: locations[socket.id]
-    })
-  }, 1000)
 })
 
 // SOCKET EVENT CALLBACKS =====================================================
 socket.on('locations', async (roomLocations) => {
   console.log('Socket event callback: locations')
 
-  locations = roomLocations;
-  console.log(socket.id, locations);
+  for (const [userId, location] of Object.entries(roomLocations)) {
+    if (people.hasOwnProperty(userId)) {
+      people[userId].location = location;
+      updateAvatarPosition(people[userId].avatar, location);
+    } else {
+      console.log(userId, socket.id)
+      people[userId] = { location, avatar: initializeAvatar(location, userId === socket.id) }
+    }
+  }
+  console.log(socket.id, people);
+  canvas.renderAll();
 })
 
+function updateAvatarPosition(avatar, location) {
+  avatar.setLeft(location[0]);
+  avatar.setTop(location[1]);
+  avatar.setCoords();
+}
+
+function initializeAvatar(location, own) {
+  const avatar = new fabric.Circle({
+    left: location[0],
+    top: location[1],
+    radius: 25,
+    fill: own ? '#138913' : '#a21818',
+    lockUniScaling: true,
+    hasControls: false,
+    hasBorders: false,
+    'selectable': own,
+    'evented': own
+  });
+  canvas.add(avatar);
+  return avatar;
+}
 
 socket.on('room_created', async () => {
   console.log('Socket event callback: room_created')
@@ -208,4 +242,79 @@ function sendIceCandidate(event) {
 window.onbeforeunload = function ()
 {
   socket.emit('leave', roomId)
+}
+
+fabric.util.addListener(document.body, 'keydown', function(options) {
+  if (options.repeat) {
+    return;
+  }
+  var key = options.which || options.keyCode; // key detection
+  if (key === 37) { // handle Left key
+    moveSelected(Direction.LEFT);
+  } else if (key === 38) { // handle Up key
+    moveSelected(Direction.UP);
+  } else if (key === 39) { // handle Right key
+    moveSelected(Direction.RIGHT);
+  } else if (key === 40) { // handle Down key
+    moveSelected(Direction.DOWN);
+  }
+});
+
+canvas.on('object:moving', function (event) {
+  people[socket.id][location] = [event.target.left, event.target.top]
+  socket.emit('update_location', {
+    roomId,
+    location: people[socket.id][location]
+  })
+});
+
+function moveSelected(direction) {
+  var activeObject = canvas.getActiveObject();
+  var activeGroup = canvas.getActiveGroup();
+
+  if (activeObject) {
+    switch (direction) {
+      case Direction.LEFT:
+        activeObject.setLeft(activeObject.getLeft() - STEP);
+        break;
+      case Direction.UP:
+        activeObject.setTop(activeObject.getTop() - STEP);
+        break;
+      case Direction.RIGHT:
+        activeObject.setLeft(activeObject.getLeft() + STEP);
+        break;
+      case Direction.DOWN:
+        activeObject.setTop(activeObject.getTop() + STEP);
+        break;
+    }
+    activeObject.setCoords();
+    console.log([activeObject.left, activeObject.top]);
+    people[socket.id][location] = [activeObject.left, activeObject.top]
+    canvas.renderAll();
+    socket.emit('update_location', {
+      roomId,
+      location: people[socket.id][location]
+    })
+
+  } else if (activeGroup) {
+    switch (direction) {
+      case Direction.LEFT:
+        activeGroup.setLeft(activeGroup.getLeft() - STEP);
+        break;
+      case Direction.UP:
+        activeGroup.setTop(activeGroup.getTop() - STEP);
+        break;
+      case Direction.RIGHT:
+        activeGroup.setLeft(activeGroup.getLeft() + STEP);
+        break;
+      case Direction.DOWN:
+        activeGroup.setTop(activeGroup.getTop() + STEP);
+        break;
+    }
+    activeGroup.setCoords();
+    canvas.renderAll();
+    console.log('selected group was moved');
+  } else {
+    console.log('no object selected');
+  }
 }
