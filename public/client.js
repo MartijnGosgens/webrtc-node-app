@@ -4,8 +4,9 @@ const roomInput = document.getElementById('room-input')
 const connectButton = document.getElementById('connect-button')
 
 const videoChatContainer = document.getElementById('video-chat-container')
-const localVideoComponent = document.getElementById('local-video')
-const remoteVideoComponent = document.getElementById('remote-video')
+const localVideoComponent = document.getElementById('video-1')
+const remoteVideoComponents = [document.getElementById('video-2'),
+                               document.getElementById('video-3')]
 
 // Variables.
 const socket = io()
@@ -185,7 +186,12 @@ async function createAnswer(rtcPeerConnection) {
 }
 
 function setRemoteStream(event) {
-  remoteVideoComponent.srcObject = event.streams[0]
+  console.log('event', event);
+  event.streams.forEach((stream, index) => {
+    if (index < remoteVideoComponents.length) {
+      remoteVideoComponents[index].srcObject = stream;
+    }
+  })
   remoteStream = event.stream
 }
 
