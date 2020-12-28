@@ -308,4 +308,9 @@ function moveSelected(direction) {
       roomId,
       location: people[socket.id][location]
     })
+  }
 }
+
+// Prompt for a room name
+roomName = window.prompt("Please enter the room name",'');
+joinRoom(roomName);

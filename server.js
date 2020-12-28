@@ -39,7 +39,8 @@ io.on('connection', (socket) => {
       delete locations[roomId][socket.id];
     } catch(err) { }
 
-    if (Object.keys(locations[roomId]).length === 0) {
+
+    if (locations[roomId] && Object.keys(locations[roomId]).length === 0) {
       try {
         delete locations[roomId];
       } catch(err) { }
