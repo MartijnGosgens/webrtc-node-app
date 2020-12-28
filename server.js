@@ -30,13 +30,19 @@ io.on('connection', (socket) => {
     locations[roomId][socket.id] = [0, 0];
     console.log(locations);
     socket.emit('locations', locations[roomId]);
+    socket.broadcast.to(roomId).emit('locations', locations[roomId]);
   })
 
   socket.on('leave', (roomId) => {
     console.log(`User ${socket.id} is leaving room ${roomId}.`);
-    delete locations[roomId][socket.id];
+    try {
+      delete locations[roomId][socket.id];
+    } catch(err) { }
+
     if (Object.keys(locations[roomId]).length === 0) {
-      delete locations[roomId];
+      try {
+        delete locations[roomId];
+      } catch(err) { }
     } else {
       socket.broadcast.to(roomId).emit('locations', locations[roomId]);
     }
