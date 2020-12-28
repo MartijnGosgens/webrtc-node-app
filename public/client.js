@@ -227,6 +227,7 @@ async function setLocalStream(mediaConstraints) {
 
   localStream = stream
   localVideoComponent.srcObject = stream
+  localVideoComponent.volume = 0;
 }
 
 function addLocalTracks(rtcPeerConnection) {
