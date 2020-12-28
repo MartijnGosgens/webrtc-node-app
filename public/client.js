@@ -46,9 +46,12 @@ const canvas = new fabric.Canvas('canvas', {
 });
 
 // BUTTON LISTENER ============================================================
-connectButton.addEventListener('click', () => {
-  joinRoom(roomInput.value);
-})
+function distance(l1, l2) {
+  return (
+      (l1[0] - l2[0])**2
+      + (l1[1]-l2[1])**2
+  ) ** 0.5
+}
 
 // SOCKET EVENT CALLBACKS =====================================================
 socket.on('locations', async (roomLocations) => {
@@ -57,10 +60,15 @@ socket.on('locations', async (roomLocations) => {
   for (const [userId, location] of Object.entries(roomLocations)) {
     if (people.hasOwnProperty(userId)) {
       people[userId].location = location;
+      people[userId].distance = distance(location, roomLocations[socket.id]);
       updateAvatarPosition(people[userId].avatar, location);
     } else {
       console.log(userId, socket.id)
-      people[userId] = { location, avatar: initializeAvatar(location, userId === socket.id) }
+      people[userId] = {
+        location,
+        avatar: initializeAvatar(location, userId === socket.id),
+        distance: distance(location, roomLocations[socket.id])
+      }
     }
   }
   console.log(socket.id, people);
@@ -86,6 +94,9 @@ function initializeAvatar(location, own) {
     'evented': own
   });
   canvas.add(avatar);
+  if (own) {
+    canvas.setActiveObject(avatar);
+  }
   return avatar;
 }
 
@@ -247,9 +258,6 @@ window.onbeforeunload = function ()
 }
 
 fabric.util.addListener(document.body, 'keydown', function(options) {
-  if (options.repeat) {
-    return;
-  }
   var key = options.which || options.keyCode; // key detection
   if (key === 37) { // handle Left key
     moveSelected(Direction.LEFT);
@@ -263,7 +271,14 @@ fabric.util.addListener(document.body, 'keydown', function(options) {
 });
 
 canvas.on('object:moving', function (event) {
-  people[socket.id][location] = [event.target.left, event.target.top]
+  ownLocation = [event.target.left, event.target.top]
+  people[socket.id].location = ownLocation
+  // Update distances
+  for (const [userId, info] of Object.entries(people)) {
+    if (userId!=socket.id) {
+      people[userId].distance = distance(info.location, ownLocation)
+    }
+  }
   socket.emit('update_location', {
     roomId,
     location: people[socket.id][location]
@@ -272,7 +287,6 @@ canvas.on('object:moving', function (event) {
 
 function moveSelected(direction) {
   var activeObject = canvas.getActiveObject();
-  var activeGroup = canvas.getActiveGroup();
 
   if (activeObject) {
     switch (direction) {
@@ -290,33 +304,15 @@ function moveSelected(direction) {
         break;
     }
     activeObject.setCoords();
-    console.log([activeObject.left, activeObject.top]);
     people[socket.id][location] = [activeObject.left, activeObject.top]
     canvas.renderAll();
     socket.emit('update_location', {
       roomId,
       location: people[socket.id][location]
     })
-
-  } else if (activeGroup) {
-    switch (direction) {
-      case Direction.LEFT:
-        activeGroup.setLeft(activeGroup.getLeft() - STEP);
-        break;
-      case Direction.UP:
-        activeGroup.setTop(activeGroup.getTop() - STEP);
-        break;
-      case Direction.RIGHT:
-        activeGroup.setLeft(activeGroup.getLeft() + STEP);
-        break;
-      case Direction.DOWN:
-        activeGroup.setTop(activeGroup.getTop() + STEP);
-        break;
-    }
-    activeGroup.setCoords();
-    canvas.renderAll();
-    console.log('selected group was moved');
-  } else {
-    console.log('no object selected');
   }
 }
+
+// Prompt for a room name
+roomName = window.prompt("Please enter the room name",'');
+joinRoom(roomName);
