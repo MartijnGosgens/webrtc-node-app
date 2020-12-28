@@ -105,11 +105,28 @@ function updateAvatarPosition(avatar, location) {
 }
 
 function initializeAvatar(location, own) {
-  const avatar = new fabric.Circle({
+  const circle = new fabric.Circle({
     left: location[0],
     top: location[1],
     radius: 25,
     fill: own ? '#138913' : '#a21818',
+    lockUniScaling: true,
+    hasControls: false,
+    opacity: 0.5,
+    hasBorders: false,
+    'selectable': false,
+    'evented': false
+  });
+  const text = new fabric.Text('Henk', {
+    fontFamily: 'Calibri',
+    fontSize: 16,
+    textAlign: 'center',
+    originX: 'center',
+    originY: 'center',
+    left: location[0] + 25,
+    top: location[1] + 25
+  });
+  const avatar = new fabric.Group([circle, text], {
     lockUniScaling: true,
     hasControls: false,
     hasBorders: false,
@@ -331,5 +348,5 @@ function moveSelected(direction) {
 }
 
 // Prompt for a room name
-roomName = window.prompt("Please enter the room name",'');
+roomName = window.prompt("Please enter the room name",'1');
 joinRoom(roomName);
