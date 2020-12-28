@@ -169,13 +169,7 @@ function joinRoom(room) {
   } else {
     roomId = room
     socket.emit('join', room)
-    showVideoConference()
   }
-}
-
-function showVideoConference() {
-  roomSelectionContainer.style = 'display: none'
-  videoChatContainer.style = 'display: block'
 }
 
 async function setLocalStream(mediaConstraints) {
@@ -269,7 +263,7 @@ fabric.util.addListener(document.body, 'keydown', function(options) {
 });
 
 canvas.on('object:moving', function (event) {
-  ownLocation = [event.target.left, event.target.top]
+  const ownLocation = [event.target.left, event.target.top]
   people[socket.id].location = ownLocation
   // Update distances
   for (const [userId, info] of Object.entries(people)) {
@@ -277,9 +271,10 @@ canvas.on('object:moving', function (event) {
       people[userId].distance = distance(info.location, ownLocation)
     }
   }
+
   socket.emit('update_location', {
     roomId,
-    location: people[socket.id][location]
+    location: people[socket.id].location
   })
 });
 
