@@ -46,10 +46,6 @@ const canvas = new fabric.Canvas('canvas', {
 });
 
 // BUTTON LISTENER ============================================================
-connectButton.addEventListener('click', () => {
-  joinRoom(roomInput.value);
-})
-
 function distance(l1, l2) {
   return (
       (l1[0] - l2[0])**2
@@ -169,13 +165,7 @@ function joinRoom(room) {
   } else {
     roomId = room
     socket.emit('join', room)
-    showVideoConference()
   }
-}
-
-function showVideoConference() {
-  roomSelectionContainer.style = 'display: none'
-  videoChatContainer.style = 'display: block'
 }
 
 async function setLocalStream(mediaConstraints) {
@@ -336,3 +326,7 @@ function moveSelected(direction) {
     console.log('no object selected');
   }
 }
+
+// Prompt for a room name
+roomName = window.prompt("Please enter the room name",'');
+joinRoom(roomName);
