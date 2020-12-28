@@ -5,8 +5,7 @@ const connectButton = document.getElementById('connect-button')
 
 const videoChatContainer = document.getElementById('video-chat-container')
 const localVideoComponent = document.getElementById('video-1')
-const remoteVideoComponents = [document.getElementById('video-2'),
-                               document.getElementById('video-3')]
+const remoteVideoComponents = {};
 
 // Variables.
 const socket = io()
@@ -20,7 +19,6 @@ let isRoomCreator
 let rtcPeerConnections = {};// Connection between the local device and the remote peer.
 let roomId
 let locations
-let bruh = false;
 
 // Free public STUN servers provided by Google.
 const iceServers = {
@@ -83,12 +81,7 @@ socket.on('start_call', async event => {
   if (socket.id !== event.userId) {
     var rtcPeerConnection = new RTCPeerConnection(iceServers);
     addLocalTracks(rtcPeerConnection);
-    if (bruh) {
-      rtcPeerConnection.ontrack = e => setRemoteStream(e, 1, event.userId);
-    } else {
-      rtcPeerConnection.ontrack = e => setRemoteStream(e, 0, event.userId);
-      bruh = true;
-    }
+    rtcPeerConnection.ontrack = e => setRemoteStream(e, event.userId);
     rtcPeerConnection.onicecandidate = e => sendIceCandidate(e, event.userId);
     rtcPeerConnections[event.userId] = rtcPeerConnection;
     await createOffer(rtcPeerConnection, event.userId);
@@ -103,12 +96,7 @@ socket.on('webrtc_offer', async (event) => {
   if (socket.id === event.userId) {
     var rtcPeerConnection = new RTCPeerConnection(iceServers)
     addLocalTracks(rtcPeerConnection)
-    if (bruh) {
-      rtcPeerConnection.ontrack = e => setRemoteStream(e, 1, event.senderId);
-    } else {
-      rtcPeerConnection.ontrack = e => setRemoteStream(e, 0, event.senderId);
-      bruh = true;
-    }
+    rtcPeerConnection.ontrack = e => setRemoteStream(e, event.senderId);
     rtcPeerConnection.onicecandidate = e => sendIceCandidate(e, event.senderId)
     rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event.sdp))
     rtcPeerConnections[event.senderId] = rtcPeerConnection;
@@ -208,9 +196,15 @@ async function createAnswer(rtcPeerConnection, userId) {
   })
 }
 
-function setRemoteStream(event, idx, userId) {
-  remoteVideoComponents[idx].srcObject = event.streams[0];
-  remoteStream = event.stream
+function setRemoteStream(event, userId) {
+  if (remoteVideoComponents[userId]) {
+    // TODO: find out why this is needed
+    return;
+  }
+
+  var newVideoComponent = createVideo();
+  newVideoComponent.srcObject = event.streams[0];
+  remoteVideoComponents[userId] = newVideoComponent;
 }
 
 function sendIceCandidate(event, userId) {
@@ -222,6 +216,19 @@ function sendIceCandidate(event, userId) {
       userId
     })
   }
+}
+
+function createVideo() {
+  var videoPanel = document.getElementById("video-panel");
+  var div = document.createElement("div");
+  var video = document.createElement("video");
+  video.setAttribute("class", "video-container")
+  video.setAttribute("autoplay", "autoplay");
+  video.setAttribute("muted", "muted");
+  div.appendChild(video);
+  videoPanel.appendChild(div);
+
+  return video;
 }
 
 window.onbeforeunload = function ()
