@@ -18,6 +18,7 @@ let remoteStream
 let isRoomCreator
 let rtcPeerConnection // Connection between the local device and the remote peer.
 let roomId
+let locations
 
 // Free public STUN servers provided by Google.
 const iceServers = {
@@ -32,10 +33,27 @@ const iceServers = {
 
 // BUTTON LISTENER ============================================================
 connectButton.addEventListener('click', () => {
-  joinRoom(roomInput.value)
+  joinRoom(roomInput.value);
+
+  setTimeout(() => {
+    console.log('Updating my location.')
+    locations[socket.id] = [1, 1];
+    socket.emit('update_location', {
+      roomId,
+      location: locations[socket.id]
+    })
+  }, 1000)
 })
 
 // SOCKET EVENT CALLBACKS =====================================================
+socket.on('locations', async (roomLocations) => {
+  console.log('Socket event callback: locations')
+
+  locations = roomLocations;
+  console.log(socket.id, locations);
+})
+
+
 socket.on('room_created', async () => {
   console.log('Socket event callback: room_created')
 
@@ -117,7 +135,8 @@ function showVideoConference() {
 async function setLocalStream(mediaConstraints) {
   let stream
   try {
-    stream = await navigator.mediaDevices.getUserMedia(mediaConstraints)
+    stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    console.log(stream);
   } catch (error) {
     console.error('Could not get user media', error)
   }
@@ -128,6 +147,7 @@ async function setLocalStream(mediaConstraints) {
 
 function addLocalTracks(rtcPeerConnection) {
   localStream.getTracks().forEach((track) => {
+    console.log(track);
     rtcPeerConnection.addTrack(track, localStream)
   })
 }
@@ -177,4 +197,9 @@ function sendIceCandidate(event) {
       candidate: event.candidate.candidate,
     })
   }
+}
+
+window.onbeforeunload = function ()
+{
+  socket.emit('leave', roomId)
 }
