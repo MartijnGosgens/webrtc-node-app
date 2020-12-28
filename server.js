@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
       socket.emit('full_room', roomId)
     }
 
-    locations[roomId][socket.id] = [0, 0];
+    locations[roomId][socket.id] = [250, 250];
     console.log(locations);
     socket.emit('locations', locations[roomId]);
     socket.broadcast.to(roomId).emit('locations', locations[roomId]);
