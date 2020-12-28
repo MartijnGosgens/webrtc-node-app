@@ -64,10 +64,8 @@ function volume(dist) {
 }
 
 function updateVolumes() {
-  for (let vid of remoteVideoComponents) {
-    if (vid.userId) {
-      vid.volume = volume(people[vid.userId].distance);
-    }
+  for (const [userId, video] of Object.entries(remoteVideoComponents)) {
+    video.volume = volume(people[userId].distance);
   }
 }
 
@@ -87,9 +85,6 @@ socket.on('locations', async (roomLocations) => {
         avatar: initializeAvatar(location, userId === socket.id),
         distance: distance(location, roomLocations[socket.id])
       }
-    }
-    if (userId != socket.id) {
-      remoteVideoComponents[0].userId = userId;
     }
   }
   console.log(socket.id, people);
