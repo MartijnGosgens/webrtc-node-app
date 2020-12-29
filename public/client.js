@@ -28,6 +28,10 @@ let audioObjects = {
     location: [750,150],
     player: document.getElementById('jukebox2')
   },
+  jukebox3: {
+    location: [500,500],
+    player: document.getElementById('jukebox3')
+  },
 }
 
 // Free public STUN servers provided by Google.
