@@ -19,6 +19,16 @@ let isRoomCreator
 let rtcPeerConnections = {};// Connection between the local device and the remote peer.
 let roomId
 let people = {}
+let audioObjects = {
+  jukebox1: {
+    location: [250,150],
+    player: document.getElementById('jukebox1')
+  },
+  jukebox2: {
+    location: [750,150],
+    player: document.getElementById('jukebox2')
+  },
+}
 
 // Free public STUN servers provided by Google.
 const iceServers = {
@@ -44,12 +54,35 @@ const canvas = new fabric.Canvas('canvas', {
   height: 10000,
 });
 
-// BUTTON LISTENER ============================================================
+// Place jukeboxes
+for (const [audioId, info] of Object.entries(audioObjects)) {
+  fabric.loadSVGFromURL('jukebox.svg',function(objects, options){
+    var svgData = fabric.util.groupSVGElements(objects, options);
+    svgData.top = info.location[1];
+    svgData.left = info.location[0];
+    svgData.scaleToHeight(50);
+    canvas.add(svgData);
+  });
+}
+
+
 function distance(l1, l2) {
   return (
       (l1[0] - l2[0])**2
       + (l1[1]-l2[1])**2
   ) ** 0.5
+}
+
+function updateDistances() {
+  const ownLocation = people[socket.id].location;
+  for (const [userId, info] of Object.entries(people)) {
+    if (userId!=socket.id) {
+      people[userId].distance = distance(info.location, ownLocation)
+    }
+  }
+  for (const [audioId, info] of Object.entries(audioObjects)) {
+    audioObjects[audioId].distance = distance(info.location,ownLocation)
+  }
 }
 
 // Returns the audio volume for a given distance. Between distance 50 and 350, the volume decreases linearly.
@@ -67,6 +100,9 @@ function updateVolumes() {
   for (const [userId, video] of Object.entries(remoteVideoComponents)) {
     video.volume = volume(people[userId].distance);
   }
+  for (const [id, info] of Object.entries(audioObjects)) {
+    info.player.volume = volume(info.distance);
+  }
 }
 
 // SOCKET EVENT CALLBACKS =====================================================
@@ -76,18 +112,16 @@ socket.on('locations', async (roomLocations) => {
   for (const [userId, location] of Object.entries(roomLocations)) {
     if (people.hasOwnProperty(userId)) {
       people[userId].location = location;
-      people[userId].distance = distance(location, roomLocations[socket.id]);
       updateAvatarPosition(people[userId].avatar, location);
     } else {
       console.log(userId, socket.id)
       people[userId] = {
         location,
-        avatar: initializeAvatar(location, userId === socket.id),
-        distance: distance(location, roomLocations[socket.id])
+        avatar: initializeAvatar(location, userId === socket.id)
       }
     }
   }
-  console.log(socket.id, people);
+  updateDistances();
   canvas.renderAll();
   updateVolumes();
 })
@@ -170,8 +204,6 @@ socket.on('start_call', async event => {
 
 socket.on('webrtc_offer', async (event) => {
   console.log('Socket event callback: webrtc_offer')
-  //console.log(socket.id);
-  //console.log(event.userId);
 
   if (socket.id === event.userId) {
     var rtcPeerConnection = new RTCPeerConnection(iceServers)
@@ -194,8 +226,6 @@ socket.on('webrtc_answer', (event) => {
 
 socket.on('webrtc_ice_candidate', (event) => {
   console.log('Socket event callback: webrtc_ice_candidate')
-  //console.log(event.userId)
-  //console.log(rtcPeerConnections);
   if (socket.id === event.userId) {
     // ICE candidate configuration.
     var candidate = new RTCIceCandidate({
@@ -220,7 +250,6 @@ async function setLocalStream(mediaConstraints) {
   let stream
   try {
     stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
-    console.log(stream);
   } catch (error) {
     console.error('Could not get user media', error)
   }
@@ -232,7 +261,6 @@ async function setLocalStream(mediaConstraints) {
 
 function addLocalTracks(rtcPeerConnection) {
   localStream.getTracks().forEach((track) => {
-    console.log(track);
     rtcPeerConnection.addTrack(track, localStream)
   })
 }
@@ -314,13 +342,13 @@ window.onbeforeunload = function ()
 fabric.util.addListener(document.body, 'keydown', function(options) {
   var key = options.which || options.keyCode; // key detection
   if (key === 37) { // handle Left key
-    moveSelected(Direction.LEFT);
+    moveAvatar(Direction.LEFT);
   } else if (key === 38) { // handle Up key
-    moveSelected(Direction.UP);
+    moveAvatar(Direction.UP);
   } else if (key === 39) { // handle Right key
-    moveSelected(Direction.RIGHT);
+    moveAvatar(Direction.RIGHT);
   } else if (key === 40) { // handle Down key
-    moveSelected(Direction.DOWN);
+    moveAvatar(Direction.DOWN);
   }
 });
 
@@ -328,44 +356,42 @@ canvas.on('object:moving', function (event) {
   const ownLocation = [event.target.left, event.target.top]
   people[socket.id].location = ownLocation
   // Update distances
-  for (const [userId, info] of Object.entries(people)) {
-    if (userId!=socket.id) {
-      people[userId].distance = distance(info.location, ownLocation)
-    }
-  }
+  updateDistances();
 
   socket.emit('update_location', {
     roomId,
-    location: people[socket.id].location
+    location: ownLocation
   })
   updateVolumes();
 });
 
-function moveSelected(direction) {
-  var activeObject = canvas.getActiveObject();
+function moveAvatar(direction) {
+  const avatar = people[socket.id].avatar;
 
-  if (activeObject) {
+  if (avatar) {
     switch (direction) {
       case Direction.LEFT:
-        activeObject.setLeft(activeObject.getLeft() - STEP);
+        avatar.setLeft(avatar.getLeft() - STEP);
         break;
       case Direction.UP:
-        activeObject.setTop(activeObject.getTop() - STEP);
+        avatar.setTop(avatar.getTop() - STEP);
         break;
       case Direction.RIGHT:
-        activeObject.setLeft(activeObject.getLeft() + STEP);
+        avatar.setLeft(avatar.getLeft() + STEP);
         break;
       case Direction.DOWN:
-        activeObject.setTop(activeObject.getTop() + STEP);
+        avatar.setTop(avatar.getTop() + STEP);
         break;
     }
-    activeObject.setCoords();
-    people[socket.id][location] = [activeObject.left, activeObject.top]
+    avatar.setCoords();
+    people[socket.id].location = [avatar.left, avatar.top]
+    updateDistances();
     canvas.renderAll();
     socket.emit('update_location', {
       roomId,
       location: people[socket.id][location]
     })
+    updateVolumes()
   }
 }
 
