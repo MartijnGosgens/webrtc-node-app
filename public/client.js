@@ -56,7 +56,7 @@ const canvas = new fabric.Canvas('canvas', {
 
 // Place jukeboxes
 for (const [audioId, info] of Object.entries(audioObjects)) {
-  fabric.loadSVGFromURL('jukebox.svg',function(objects, options){
+  fabric.loadSVGFromURL('borrelio/jukebox.svg',function(objects, options){
     var svgData = fabric.util.groupSVGElements(objects, options);
     svgData.top = info.location[1];
     svgData.left = info.location[0];
