@@ -102,6 +102,9 @@ function updateVolumes() {
   }
   for (const [id, info] of Object.entries(audioObjects)) {
     info.player.volume = volume(info.distance);
+    if (info.player.paused && info.player.volume>0) {
+      info.player.play();
+    }
   }
 }
 
@@ -114,7 +117,6 @@ socket.on('locations', async (roomLocations) => {
       people[userId].location = location;
       updateAvatarPosition(people[userId].avatar, location);
     } else {
-      console.log(userId, socket.id)
       people[userId] = {
         location,
         avatar: initializeAvatar(location, userId === socket.id)
