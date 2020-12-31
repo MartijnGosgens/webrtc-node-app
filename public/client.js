@@ -20,17 +20,17 @@ let rtcPeerConnections = {};// Connection between the local device and the remot
 let roomId
 let people = {}
 let audioObjects = {
-  jukebox1: {
+  /**loop1: {
     location: [250,150],
-    player: document.getElementById('jukebox1')
+    player: document.getElementById('loop1')
   },
-  jukebox2: {
+  loop2: {
     location: [750,150],
-    player: document.getElementById('jukebox2')
-  },
-  jukebox3: {
+    player: document.getElementById('loop2')
+  },**/
+  radio2: {
     location: [500,500],
-    player: document.getElementById('jukebox3')
+    player: document.getElementById('radio2')
   },
 }
 
