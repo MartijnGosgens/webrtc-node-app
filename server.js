@@ -5,7 +5,7 @@ const io = require('socket.io')(server, {resource: '/borrelio/socket.io'})
 
 app.use('/', express.static('public'))
 
-const locations = {};
+const roomUsers = {};
 
 io.on('connection', (socket) => {
   socket.on('join', (roomId) => {
@@ -14,7 +14,7 @@ io.on('connection', (socket) => {
 
     // These events are emitted only to the sender socket.
     if (numberOfClients === 0) {
-      locations[roomId] = {};
+      roomUsers[roomId] = {};
       console.log(`Creating room ${roomId} and emitting room_created socket event`)
       socket.join(roomId)
       socket.emit('room_created', roomId)
@@ -26,35 +26,43 @@ io.on('connection', (socket) => {
       console.log(`Can't join room ${roomId}, emitting full_room socket event`)
       socket.emit('full_room', roomId)
     }
-
-    locations[roomId][socket.id] = [250, 250];
-    console.log(locations);
-    socket.emit('locations', locations[roomId]);
-    socket.broadcast.to(roomId).emit('locations', locations[roomId]);
+    roomUsers[roomId][socket.id] = {
+      location: [250, 250],
+      name: 'User'
+    };
+    console.log(roomUsers[roomId]);
+    socket.emit('users', roomUsers[roomId]);
+    socket.broadcast.to(roomId).emit('users', roomUsers[roomId]);
   })
 
   socket.on('leave', (roomId) => {
     console.log(`User ${socket.id} is leaving room ${roomId}.`);
     try {
-      delete locations[roomId][socket.id];
+      delete roomUsers[roomId][socket.id];
     } catch(err) { }
 
 
-    if (locations[roomId] && Object.keys(locations[roomId]).length === 0) {
+    if (roomUsers[roomId] && Object.keys(roomUsers[roomId]).length === 0) {
       try {
-        delete locations[roomId];
+        delete roomUsers[roomId];
       } catch(err) { }
     } else {
-      socket.broadcast.to(roomId).emit('locations', locations[roomId]);
+      socket.broadcast.to(roomId).emit('users', roomUsers[roomId]);
     }
-    console.log(locations);
   })
 
   socket.on('update_location', (event) => {
     console.log(`Updating location of user ${socket.id} in room ${event.roomId} to position ${event.location}`)
-    locations[event.roomId][socket.id] = event.location;
+    roomUsers[event.roomId][socket.id].location = event.location;
     // TODO: only send the updated location
-    socket.broadcast.to(event.roomId).emit('locations', locations[event.roomId])
+    socket.broadcast.to(event.roomId).emit('users', roomUsers[event.roomId])
+  });
+
+  socket.on('update_name', (event) => {
+    console.log(`Updating name of user ${socket.id} in room ${event.roomId} to ${event.newName}`)
+    roomUsers[event.roomId][socket.id].name = event.newName;
+    // TODO: only send the updated location
+    socket.broadcast.to(event.roomId).emit('users', roomUsers[event.roomId])
   });
 
   // These events are emitted to all the sockets connected to the same room except the sender.

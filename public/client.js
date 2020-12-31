@@ -64,6 +64,8 @@ for (const [audioId, info] of Object.entries(audioObjects)) {
     var svgData = fabric.util.groupSVGElements(objects, options);
     svgData.top = info.location[1];
     svgData.left = info.location[0];
+    svgData.selectable = false;
+    svgData.hasControls = false;
     svgData.scaleToHeight(50);
     canvas.add(svgData);
   });
@@ -113,17 +115,20 @@ function updateVolumes() {
 }
 
 // SOCKET EVENT CALLBACKS =====================================================
-socket.on('locations', async (roomLocations) => {
-  console.log('Socket event callback: locations')
-
-  for (const [userId, location] of Object.entries(roomLocations)) {
+socket.on('users', async (roomUsers) => {
+  console.log('Socket event callback: users')
+  console.log(roomUsers);
+  for (const [userId, info] of Object.entries(roomUsers)) {
     if (people.hasOwnProperty(userId)) {
-      people[userId].location = location;
-      updateAvatarPosition(people[userId].avatar, location);
+      people[userId].location = info.location;
+      people[userId].name = info.name;
+      people[userId].avatar.changeName(info.name);
+      updateAvatarPosition(people[userId].avatar, info.location);
     } else {
       people[userId] = {
         location,
-        avatar: initializeAvatar(location, userId === socket.id)
+        avatar: initializeAvatar(info.location, info.name, userId === socket.id),
+        name: info.name
       }
     }
   }
@@ -138,7 +143,7 @@ function updateAvatarPosition(avatar, location) {
   avatar.setCoords();
 }
 
-function initializeAvatar(location, own) {
+function initializeAvatar(location, name, own) {
   const circle = new fabric.Circle({
     left: location[0],
     top: location[1],
@@ -148,10 +153,10 @@ function initializeAvatar(location, own) {
     hasControls: false,
     opacity: 0.5,
     hasBorders: false,
-    'selectable': false,
-    'evented': false
+    selectable: false,
+    evented: false
   });
-  const text = new fabric.Text('Henk', {
+  const text = new fabric.Text(name, {
     fontFamily: 'Calibri',
     fontSize: 16,
     textAlign: 'center',
@@ -164,9 +169,14 @@ function initializeAvatar(location, own) {
     lockUniScaling: true,
     hasControls: false,
     hasBorders: false,
-    'selectable': own,
-    'evented': own
+    selectable: own,
+    evented: own
   });
+  avatar.changeName = function(newName) {
+    text.text = newName;
+    // Set dirty to true, because else it will not re-render
+    avatar.dirty = true;
+  }
   canvas.add(avatar);
   if (own) {
     canvas.setActiveObject(avatar);
@@ -372,6 +382,20 @@ canvas.on('object:moving', function (event) {
   })
   updateVolumes();
 });
+
+localVideoComponent.onclick = function(e) {
+  console.log(e);
+  //clicked on object
+  let newName = window.prompt('Choose your name',people[socket.id].name);
+  if (newName) {
+    people[socket.id].avatar.changeName(newName);
+    canvas.renderAll();
+    socket.emit('update_name', {
+      roomId,
+      newName
+    });
+  }
+}
 
 function moveAvatar(direction) {
   const avatar = people[socket.id].avatar;
