@@ -4,7 +4,7 @@ const roomInput = document.getElementById('room-input')
 const connectButton = document.getElementById('connect-button')
 
 const videoChatContainer = document.getElementById('video-chat-container')
-const localVideoComponent = document.getElementById('video-1')
+const localVideoComponent = document.getElementById('local-video')
 const remoteVideoComponents = {};
 
 // Variables.

@@ -64,6 +64,9 @@
         height: 100%;
       }
 
+      #local-video {
+        transform: rotateY(180deg);
+      }
       .container {
         display: flex;
       }
@@ -79,9 +82,7 @@
         <canvas id="canvas" style="width: 100%; height: 100%"></canvas>
       </div>
       <div id="video-panel" class="container">
-        <div><video id="video-1" class="video-container" autoplay="autoplay" muted="muted"></video></div>
-        <div><video id="video-2" class="video-container" autoplay="autoplay" muted="muted"></video></div>
-        <div><video id="video-3" class="video-container" autoplay="autoplay" muted="muted"></video></div>
+        <div><video id="local-video" class="video-container" autoplay="autoplay" muted="muted"></video></div>
       </div>
     </div>
     <audio loop id="jukebox1"><source src="borrelio/loop1.mp3" type="audio/mpeg"></audio>
