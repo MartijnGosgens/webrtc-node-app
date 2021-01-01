@@ -9,8 +9,8 @@ const roomUsers = {};
 
 io.on('connection', (socket) => {
   socket.on('join', (roomId) => {
-    const roomClients = io.sockets.adapter.rooms[roomId] || { length: 0 }
-    const numberOfClients = roomClients.length;
+    const users = roomUsers[roomId];
+    const numberOfClients = users ? Object.keys(roomUsers[roomId]).length : 0;
 
     // These events are emitted only to the sender socket.
     if (numberOfClients === 0) {
@@ -18,7 +18,7 @@ io.on('connection', (socket) => {
       console.log(`Creating room ${roomId} and emitting room_created socket event`)
       socket.join(roomId)
       socket.emit('room_created', roomId)
-    } else if (numberOfClients < 5) {
+    } else if (numberOfClients < 10) {
       console.log(`Joining room ${roomId} and emitting room_joined socket event`)
       socket.join(roomId)
       socket.emit('room_joined', roomId)

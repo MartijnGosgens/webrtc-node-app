@@ -104,7 +104,13 @@ function volume(dist) {
 
 function updateVolumes() {
   for (const [userId, video] of Object.entries(remoteVideoComponents)) {
-    video.volume = volume(people[userId].distance);
+    if (people[userId]) {
+      video.volume = volume(people[userId].distance);
+    } else {
+      // Delete the video otherwise
+      video.parentElement.remove();
+    }
+
   }
   for (const [id, info] of Object.entries(audioObjects)) {
     info.player.volume = volume(info.distance);
@@ -118,19 +124,26 @@ function updateVolumes() {
 socket.on('users', async (roomUsers) => {
   console.log('Socket event callback: users')
   console.log(roomUsers);
+  const oldPeople = people;
+  people = roomUsers;
   for (const [userId, info] of Object.entries(roomUsers)) {
-    if (people.hasOwnProperty(userId)) {
-      people[userId].location = info.location;
-      people[userId].name = info.name;
+    if (oldPeople.hasOwnProperty(userId)) {
+      people[userId].avatar = oldPeople[userId].avatar;
       people[userId].avatar.changeName(info.name);
       updateAvatarPosition(people[userId].avatar, info.location);
+      delete oldPeople[userId];
     } else {
-      people[userId] = {
-        location,
-        avatar: initializeAvatar(info.location, info.name, userId === socket.id),
-        name: info.name
-      }
+      people[userId].avatar = initializeAvatar(info.location, info.name, userId === socket.id);
     }
+  }
+  // See which users do not exist anymore
+  for (const [userId, info] of Object.entries(oldPeople)) {
+    // Delete video player
+    if (remoteVideoComponents[userId]) {
+      remoteVideoComponents[userId].parentElement.remove();
+    }
+    // Delete avatar
+    canvas.remove(info.avatar);
   }
   updateDistances();
   canvas.renderAll();
@@ -206,7 +219,6 @@ socket.on('full_room', () => {
 
 socket.on('start_call', async event => {
   console.log('Socket event callback: start_call');
-  console.log(event.userId);
 
   if (socket.id !== event.userId) {
     var rtcPeerConnection = new RTCPeerConnection(iceServers);
@@ -228,7 +240,6 @@ socket.on('webrtc_offer', async (event) => {
     rtcPeerConnection.onicecandidate = e => sendIceCandidate(e, event.senderId)
     rtcPeerConnection.setRemoteDescription(new RTCSessionDescription(event.sdp))
     rtcPeerConnections[event.senderId] = rtcPeerConnection;
-    console.log(rtcPeerConnections);
     await createAnswer(rtcPeerConnection, event.senderId)
   }
 })
@@ -264,8 +275,6 @@ function joinRoom(room) {
 
 async function setLocalStream(mediaConstraints) {
   let stream;
-  console.log(navigator);
-  console.log(navigator.mediaDevices);
   try {
     stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
   } catch (error) {
@@ -384,7 +393,6 @@ canvas.on('object:moving', function (event) {
 });
 
 localVideoComponent.onclick = function(e) {
-  console.log(e);
   //clicked on object
   let newName = window.prompt('Choose your name',people[socket.id].name);
   if (newName) {
