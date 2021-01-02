@@ -53,6 +53,10 @@ io.on('connection', (socket) => {
 
   socket.on('update_location', (event) => {
     console.log(`Updating location of user ${socket.id} in room ${event.roomId} to position ${event.location}`)
+    if (!event.location || !Array.isArray(event.location) || event.location.length!=2 || isNaN(event.location[0]) || isNaN(event.location[1])) {
+      console.log('invalid location '+event.location);
+      return
+    }
     roomUsers[event.roomId][socket.id].location = event.location;
     // TODO: only send the updated location
     socket.broadcast.to(event.roomId).emit('users', roomUsers[event.roomId])
@@ -61,7 +65,7 @@ io.on('connection', (socket) => {
   socket.on('update_name', (event) => {
     console.log(`Updating name of user ${socket.id} in room ${event.roomId} to ${event.newName}`)
     roomUsers[event.roomId][socket.id].name = event.newName;
-    // TODO: only send the updated location
+    // TODO: only send the updated name
     socket.broadcast.to(event.roomId).emit('users', roomUsers[event.roomId])
   });
 

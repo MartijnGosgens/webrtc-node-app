@@ -151,6 +151,12 @@ socket.on('users', async (roomUsers) => {
 })
 
 function updateAvatarPosition(avatar, location) {
+  if (!Array.isArray(location) || location.length!=2) {
+    // This seems to happen sometimes for some reason?
+    console.log('Updating avatar to invalid location '+location);
+    console.log(avatar);
+    return;
+  }
   avatar.setLeft(location[0]);
   avatar.setTop(location[1]);
   avatar.setCoords();
@@ -382,13 +388,12 @@ fabric.util.addListener(document.body, 'keydown', function(options) {
 canvas.on('object:moving', function (event) {
   const ownLocation = [event.target.left, event.target.top]
   people[socket.id].location = ownLocation
-  // Update distances
-  updateDistances();
 
   socket.emit('update_location', {
     roomId,
     location: ownLocation
   })
+  updateDistances();
   updateVolumes();
 });
 
