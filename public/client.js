@@ -434,7 +434,7 @@ function moveAvatar(direction) {
     canvas.renderAll();
     socket.emit('update_location', {
       roomId,
-      location: people[socket.id][location]
+      location: people[socket.id].location
     })
     updateVolumes()
   }
